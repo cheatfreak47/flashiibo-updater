@@ -1,5 +1,5 @@
 # Flashiibo Pro Updater Client
-A hastily made electron update tool for [Flashiibo Pro](https://flashiibo.com/). Made with love for those who refuse to use anything other than FireFox.
+A hastily made electron update tool for [Flashiibo Pro](https://flashiibo.com/). Made with love for those who refuse to use anything other than FireFox. Uses [web-bluetooth-dfu](https://github.com/thegecko/web-bluetooth-dfu) by thegecko.
 
 ## Installation
 1. Download `flashiibo-pro-updater-vXXX-setup.exe` from Releases
