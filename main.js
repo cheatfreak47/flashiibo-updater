@@ -31,8 +31,7 @@ function createWindow() {
   mainWindow.webContents.on('select-bluetooth-device', (event, devices, callback) => {
     event.preventDefault()
     const device = devices.find(d =>
-      d.deviceName?.toLowerCase().includes('flashiibo dfu') ||
-      d.deviceName?.toLowerCase().includes('flashiibo')
+      d.deviceName?.toLowerCase().includes('flashiibo dfu')
     )
     device ? callback(device.deviceId) : setTimeout(() => callback(''), 1500)
   })
