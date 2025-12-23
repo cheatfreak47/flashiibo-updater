@@ -78,6 +78,38 @@
 			padding: 10px;
 			margin-top: 10px;
 		}
+		.button-container {
+            position: relative;
+            margin-top: 15px;
+        }
+        #update-button {
+            /* Centered main button */
+            margin: 0 auto;
+            display: block;
+        }
+        #manual-select {
+            /* Advanced user button styling */
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            padding: 8px 12px;
+            background-color: transparent;
+            border: 1px solid #4a4d52;
+            color: #4a4d52; /* Matches border color */
+            transition: all 0.3s ease;
+        }
+        #manual-select:hover {
+            background-color: #ff6b6b;
+            color: white;
+            border-color: #ff6b6b;
+        }
+        #manual-select.has-custom-firmware {
+	        background-color: #ff3a3a;
+            color: white;
+            border-color: #000000;
+        }
     </style>
 </head>
 <body>
@@ -93,11 +125,16 @@
             <div id="version-info" class="version-info"></div>
         </div>
 
-        <button id="update-button" disabled>Start Update</button>
-		<div class="footer-banner">Go to Settings &rarr; Firmware Update on Flashiibo Pro and click Start Update</div>
+        <div class="button-container">
+            <button id="update-button" disabled>Start Update</button>
+            <button id="manual-select">Load Firmware File</button>
+            <input type="file" id="firmware-file" accept=".zip" style="display: none;">
+        </div>
+        <div class="footer-banner">Go to Settings → Firmware Update on Flashiibo Pro and click Start Update</div>
     </div>
-	<script src="./node_modules/jszip/dist/jszip.min.js"></script>
-	<script src="./node_modules/crc-32/crc32.js"></script>
+
+    <script src="./node_modules/jszip/dist/jszip.min.js"></script>
+    <script src="./node_modules/crc-32/crc32.js"></script>
     <script src="./node_modules/web-bluetooth-dfu/dist/secure-dfu.js"></script>
     <script src="./package.js"></script>
     <script>
@@ -111,6 +148,8 @@
         const progressBar = document.getElementById('progress-bar');
         const versionInfo = document.getElementById('version-info');
         const updateButton = document.getElementById('update-button');
+        const manualSelectButton = document.getElementById('manual-select');
+        const firmwareFileInput = document.getElementById('firmware-file');
 
         function setStatus(text) {
             statusText.textContent = text;
@@ -124,6 +163,36 @@
         function setProgress(percent) {
             progressContainer.style.display = 'block';
             progressBar.style.width = `${percent}%`;
+        }
+		
+		async function handleManualFirmware(file) {
+            setStatus('Loading manual firmware...');
+            updateButton.disabled = true;
+
+            try {
+                const buffer = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+
+                currentFirmware = {
+                    version: file.name.match(/(\d{2}\.\d{2}\.\d{2})|(v\d+\.\d+\.\d+)/i)?.[0] || 'custom'
+                };
+
+                package = new SecureDfuPackage(buffer);
+                await package.load();
+
+                // Add visual indicator
+                document.getElementById('manual-select').classList.add('has-custom-firmware');
+
+                setStatus(`Loaded: ${file.name}`);
+                versionInfo.textContent = `Custom firmware ready`;
+                updateButton.disabled = false;
+            } catch (err) {
+                setError(`Failed to load firmware: ${err.message}`);
+            }
         }
 
         async function checkForUpdates() {
@@ -151,48 +220,57 @@
             }
         }
 
-        async function startUpdate() {
-            updateButton.disabled = true;
-            setStatus('Searching for Flashiibo in DFU mode...');
-            setProgress(0);
+		async function startUpdate() {
+			updateButton.disabled = true;
+			setStatus('Searching for Flashiibo in DFU mode...');
+			setProgress(0);
 
-            try {
-                const dfu = new SecureDfu(CRC32.buf);
+			try {
+				const dfu = new SecureDfu(CRC32.buf);
 
-                dfu.addEventListener("log", event => {
-                    console.log(event.message);
-                });
+				dfu.addEventListener("log", event => {
+					console.log(event.message);
+				});
 
-                dfu.addEventListener("progress", event => {
-                    if (event.object === "firmware") {
-                        const percent = Math.floor((event.currentBytes / event.totalBytes) * 100);
-                        setProgress(percent);
-                        setStatus(`Updating (${percent}%)...`);
-                    }
-                });
+				dfu.addEventListener("progress", event => {
+					if (event.object === "firmware") {
+						const percent = Math.floor((event.currentBytes / event.totalBytes) * 100);
+						setProgress(percent);
+						setStatus(`Updating (${percent}%)...`);
+					}
+				});
 
-                const device = await dfu.requestDevice(true);
-                if (!device) {
-                    throw new Error('Please put your Flashiibo in DFU mode and try again');
-                }
+				const device = await dfu.requestDevice(true);
+				if (!device) {
+					throw new Error('Flashiibo Pro in DFU mode not found');
+				}
 
-                // Update process
-                const image = await package.getAppImage();
-                if (!image) throw new Error('Invalid firmware package');
+				// Update process
+				const image = await package.getAppImage();
+				if (!image) throw new Error('Invalid firmware package');
 
-                await dfu.update(device, image.initData, image.imageData);
-                setStatus('Update complete!');
-                setProgress(100);
+				await dfu.update(device, image.initData, image.imageData);
+				setStatus('Update complete!');
+				setProgress(100);
 
-            } catch (err) {
-                setError(`Update failed: ${err.message}`);
-                console.error(err);
-                updateButton.disabled = false;
-            }
-        }
+			} catch (err) {
+				const friendlyError = err.message.includes('cancelled the requestDevice()')
+					? 'Flashiibo Pro in DFU mode not found'
+					: err.message;
+				setError(`Update failed: ${friendlyError}`);
+				updateButton.disabled = false;
+			}
+		}
 
         // Initialize
         updateButton.addEventListener('click', startUpdate);
+        manualSelectButton.addEventListener('click', () => firmwareFileInput.click());
+
+        firmwareFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleManualFirmware(e.target.files[0]);
+            }
+        });
         checkForUpdates();
     </script>
 </body>
