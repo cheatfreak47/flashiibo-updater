@@ -1,0 +1,42 @@
+{
+  "name": "flashiibo-updater",
+  "version": "1.0.3",
+  "description": "Flashiibo Pro Updater Electron Client",
+  "author": "Flashiibo",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "crc-32": "^1.2.2",
+    "jszip": "^3.10.1",
+    "node-fetch": "^2.6.7",
+    "web-bluetooth-dfu": "^1.2.1",
+	"jsdom": "^20.0.3"
+  },
+  "devDependencies": {
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "productName": "Flashiibo Pro Updater",
+    "appId": "com.flashiibo.updater",
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Flashiibo Pro Updater",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

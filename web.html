@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flashiibo Pro Updater</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f1923;
+            color: #f0f0f0;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #4ec9b0;
+            margin-bottom: 30px;
+        }
+        .status-box {
+            background-color: #1a2b3c;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .progress-container {
+            margin-top: 15px;
+            background-color: #2a3b4c;
+            border-radius: 4px;
+            height: 20px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #4ec9b0;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        button {
+            background-color: #4ec9b0;
+            color: #0f1923;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #3db8a0;
+        }
+        button:disabled {
+            background-color: #2a3b4c;
+            color: #666;
+            cursor: not-allowed;
+        }
+        .version-info {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #8b9cad;
+        }
+        .error {
+            color: #ff6b6b;
+            margin-top: 10px;
+        }
+		.footer-banner {
+			color: #ff6b6b;
+			text-align: center;
+			padding: 10px;
+			margin-top: 10px;
+		}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flashiibo Pro Updater</h1>
+
+        <div class="status-box">
+            <div id="status-text">Initializing updater...</div>
+            <div id="error-text" class="error"></div>
+            <div class="progress-container" id="progress-container" style="display: none;">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div id="version-info" class="version-info"></div>
+        </div>
+
+        <button id="update-button" disabled>Start Update</button>
+		<div class="footer-banner">Go to Settings &rarr; Firmware Update on Flashiibo Pro and click Start Update</div>
+    </div>
+	<script src="./node_modules/jszip/dist/jszip.min.js"></script>
+	<script src="./node_modules/crc-32/crc32.js"></script>
+    <script src="./node_modules/web-bluetooth-dfu/dist/secure-dfu.js"></script>
+    <script src="./package.js"></script>
+    <script>
+        let package = null;
+        let currentFirmware = null;
+
+        // UI Elements
+        const statusText = document.getElementById('status-text');
+        const errorText = document.getElementById('error-text');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const versionInfo = document.getElementById('version-info');
+        const updateButton = document.getElementById('update-button');
+
+        function setStatus(text) {
+            statusText.textContent = text;
+            errorText.textContent = '';
+        }
+
+        function setError(text) {
+            errorText.textContent = text;
+        }
+
+        function setProgress(percent) {
+            progressContainer.style.display = 'block';
+            progressBar.style.width = `${percent}%`;
+        }
+
+        async function checkForUpdates() {
+            setStatus('Checking for firmware updates...');
+
+            try {
+                const result = await window.electronAPI.downloadFirmware();
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                currentFirmware = result;
+                setStatus(`Found Flashiibo Firmware v${currentFirmware.version}`);
+                versionInfo.textContent = `Ready to update to v${currentFirmware.version}`;
+                updateButton.disabled = false;
+
+                // Load the package file
+                const buffer = await window.electronAPI.readFirmware(currentFirmware.path);
+                package = new SecureDfuPackage(buffer);
+                await package.load();
+
+            } catch (err) {
+                setError(`Update failed: ${err.message}`);
+                console.error(err);
+            }
+        }
+
+        async function startUpdate() {
+            updateButton.disabled = true;
+            setStatus('Searching for Flashiibo in DFU mode...');
+            setProgress(0);
+
+            try {
+                const dfu = new SecureDfu(CRC32.buf);
+
+                dfu.addEventListener("log", event => {
+                    console.log(event.message);
+                });
+
+                dfu.addEventListener("progress", event => {
+                    if (event.object === "firmware") {
+                        const percent = Math.floor((event.currentBytes / event.totalBytes) * 100);
+                        setProgress(percent);
+                        setStatus(`Updating (${percent}%)...`);
+                    }
+                });
+
+                const device = await dfu.requestDevice(true);
+                if (!device) {
+                    throw new Error('Please put your Flashiibo in DFU mode and try again');
+                }
+
+                // Update process
+                const image = await package.getAppImage();
+                if (!image) throw new Error('Invalid firmware package');
+
+                await dfu.update(device, image.initData, image.imageData);
+                setStatus('Update complete!');
+                setProgress(100);
+
+            } catch (err) {
+                setError(`Update failed: ${err.message}`);
+                console.error(err);
+                updateButton.disabled = false;
+            }
+        }
+
+        // Initialize
+        updateButton.addEventListener('click', startUpdate);
+        checkForUpdates();
+    </script>
+</body>
+</html>
