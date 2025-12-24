@@ -2,22 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch').default;
 const AdmZip = require('adm-zip');
+const os = require('os');
 
-async function downloadFirmware(url, downloadDir = 'downloads') {
+async function downloadFirmware(url) {
     try {
-        if (!fs.existsSync(downloadDir)) {
-            fs.mkdirSync(downloadDir);
-        }
+        // Use system temp directory
+        const tempDir = os.tmpdir();
+        const filename = path.basename(url);
+        const tempPath = path.join(tempDir, filename);
 
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
 
-        // Updated to use arrayBuffer() instead of buffer()
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-
-        const filename = path.basename(url);
-        const tempPath = path.join(downloadDir, filename);
 
         await fs.promises.writeFile(tempPath, buffer);
 
