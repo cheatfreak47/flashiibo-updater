@@ -10,11 +10,11 @@ For managing the files on a Flashiibo Pro, you may be interested in [Flashiibo P
 
 ## How to use:
  1. Download `flashiibo-pro-updater-vXXX-setup.exe` from [Releases](https://github.com/cheatfreak47/flashiibo-updater/releases).
-   <sup>*(or download the portable version if you prefer)*</sup>
+    - *(or download the portable version if you prefer)*
  2. Run installer and complete setup, and run the program. (or run the portable version.)
-   <sup>*(If installed you may run it anytime from the Start Menu)*</sup>
+    - *(If installed you may run it anytime from the Start Menu)*
  3. Put your Flashiibo Pro into DFU Update mode by going to Settings → Firmware Update.
-   <sup>*(Advanced users: If you wish to sideload your own firmware zip, you may click the "Load Firmware File" button on the bottom right.)*</sup>
+    - *(Advanced users: If you wish to sideload your own firmware zip, you may click the "Load Firmware File" button on the bottom right.)*
  4. Click on "Start Update" to push the firmware to your Flashiibo Pro.
 
 ## Features
