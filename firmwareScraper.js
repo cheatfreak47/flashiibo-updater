@@ -50,7 +50,7 @@ async function getLatestFirmware() {
 
 function extractVersionFromUrl(url) {
     // Matches both YY.MM.DD and vX.Y.Z formats
-    const versionMatch = url.match(/(\d{2}\.\d{2}\.\d{2})|(v\d+\.\d+\.\d+)/i);
+    const versionMatch = url.match(/(\d{2,4}\.\d{1,2}\.\d{1,2})|(v\d+\.\d+\.\d+)/i);
     return versionMatch ? versionMatch[0] : 'unknown';
 }
 
