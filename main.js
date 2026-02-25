@@ -39,15 +39,20 @@ function createWindow() {
   // ===== FIRMWARE DOWNLOAD HANDLER =====
   ipcMain.handle('download-firmware', async () => {
     try {
-      const response = await fetch('https://www.flashiibo.com/downloads/pro-firmware-config.json');
+      const response = await fetch('https://www.flashiibo.com/downloads/firmware-config.json');
       if (!response.ok) throw new Error(`Failed to fetch firmware info (HTTP ${response.status})`);
 
-      const { version, url } = await response.json();
-      const downloaded = await downloadFirmware(url);
+      const data = await response.json();
+
+      // Get first (latest) Pro2 firmware entry
+      const latestPro2 = data.pro2[0];
+      if (!latestPro2) throw new Error('No Pro2 firmware available');
+
+      const downloaded = await downloadFirmware(latestPro2.url);
 
       return {
         success: true,
-        version: version,
+        version: latestPro2.version,
         path: downloaded.path
       };
     } catch (err) {
