@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
-const { getLatestFirmware } = require('./firmwareScraper')
+const fetch = require('node-fetch').default;
 const { downloadFirmware } = require('./downloader')
 const fs = require('fs')
 
@@ -39,21 +39,25 @@ function createWindow() {
   // ===== FIRMWARE DOWNLOAD HANDLER =====
   ipcMain.handle('download-firmware', async () => {
     try {
-      const latest = await getLatestFirmware()
-      const downloaded = await downloadFirmware(latest.url)
+      const response = await fetch('https://www.flashiibo.com/downloads/pro-firmware-config.json');
+      if (!response.ok) throw new Error(`Failed to fetch firmware info (HTTP ${response.status})`);
+
+      const { version, url } = await response.json();
+      const downloaded = await downloadFirmware(url);
+
       return {
         success: true,
-        version: latest.version,
+        version: version,
         path: downloaded.path
-      }
+      };
     } catch (err) {
-      console.error('Firmware download failed:', err)
+      console.error('Firmware download failed:', err);
       return {
         success: false,
         error: err.message
-      }
+      };
     }
-  })
+  });
 
   // ===== FIRMWARE FILE HANDLER =====
   ipcMain.handle('read-firmware', async (event, filePath) => {
